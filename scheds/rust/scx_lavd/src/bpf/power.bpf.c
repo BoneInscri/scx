@@ -5,6 +5,7 @@
  */
 
 #include <scx/common.bpf.h>
+#include <scx/percpu.bpf.h>
 #include "intf.h"
 #include "lavd.bpf.h"
 #include "util.bpf.h"
@@ -97,12 +98,11 @@ __hidden
 void update_effective_capacity(struct cpu_ctx *cpuc)
 {
 	/* WARNING: This should be called after updating cpuc->cur_util. */
-	extern struct cpufreq_policy *cpufreq_cpu_data __ksym;
 	extern const unsigned long hw_pressure __ksym __weak;
 
 	u16 capacity_policy = 0, capacity_observed;
 	unsigned long *p_pressure, pressure = 0;
-	struct cpufreq_policy **base, *policy;
+	struct cpufreq_policy *policy;
 	u32 mfo;
 	int cpu;
 
@@ -123,9 +123,7 @@ void update_effective_capacity(struct cpu_ctx *cpuc)
 	 */
 	capacity_policy = cpuc->max_capacity;
 
-	if (unlikely((base = (struct cpufreq_policy **)&cpufreq_cpu_data) &&
-	    (bpf_probe_read_kernel(&policy, sizeof(policy), base + cpu) == 0) &&
-	    policy)) {
+	if (unlikely((policy = cpu_cpufreq_policy(cpu)))) {
 		u32 cpu_max = BPF_CORE_READ(policy, cpuinfo.max_freq);
 		u32 scaling_max = BPF_CORE_READ(policy, max);
 
