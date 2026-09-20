@@ -844,7 +844,11 @@ fn create_insert_cpu(
     let top_path = cpu_path.join("topology");
     let core_kernel_id = read_from_file(&top_path.join("core_id"))?;
     let package_id = read_from_file(&top_path.join("physical_package_id"))?;
-    let cluster_id = read_from_file(&top_path.join("cluster_id"))?;
+    // Not all architectures and kernel configs expose cluster_id in sysfs
+    // (it requires CONFIG_SCHED_CLUSTER, which is not available on e.g.
+    // LoongArch). Treat it as optional topology information and assume a
+    // single cluster when it cannot be read.
+    let cluster_id = read_from_file(&top_path.join("cluster_id")).unwrap_or(0);
 
     // Evaluate L2, L3 and LLC cache IDs.
     //
